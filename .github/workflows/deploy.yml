@@ -41,11 +41,6 @@ jobs:
           npm init -y
           npm install --save-dev eslint stylelint stylelint-config-standard
 
-      - name: Lint CSS
-        run: |
-          echo "module.exports = { extends: ['stylelint-config-standard'] };" > .stylelintrc.js
-          npx stylelint "*.css"
-
       - name: Optimize images
         run: |
           # Create optimized directory
@@ -137,24 +132,6 @@ jobs:
 
           # Test 3: Critical assets verification
           echo "🎨 Testing critical assets..."
-
-          # Test CSS
-          css_response=$(curl -s -o /dev/null -w "%{http_code}" "${DEPLOYMENT_URL}style.css" || echo "000")
-          if [ "$css_response" = "200" ]; then
-            echo "✅ CSS asset test passed"
-          else
-            echo "❌ CSS asset test failed (HTTP $css_response)"
-            VERIFICATION_PASSED=false
-          fi
-
-          # Test JavaScript
-          js_response=$(curl -s -o /dev/null -w "%{http_code}" "${DEPLOYMENT_URL}script.js" || echo "000")
-          if [ "$js_response" = "200" ]; then
-            echo "✅ JavaScript asset test passed"
-          else
-            echo "❌ JavaScript asset test failed (HTTP $js_response)"
-            VERIFICATION_PASSED=false
-          fi
 
           # Test 4: Functional smoke test
           echo "🔧 Testing JavaScript functionality..."

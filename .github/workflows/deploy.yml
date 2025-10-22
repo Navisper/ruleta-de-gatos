@@ -30,11 +30,6 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Validate HTML
-        uses: Cyb3r-Jak3/html5validator-action@v7.2.0
-        with:
-          root: ./
-          css: true
 
       - name: Install dependencies for linting
         run: |

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Compatibility Tests</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .compatibility-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+        .feature-test { border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+        .supported { background-color: #d4edda; border-color: #c3e6cb; }
+        .unsupported { background-color: #f8d7da; border-color: #f5c6cb; }
+        .feature-name { font-weight: bold; margin-bottom: 10px; }
+        .feature-status { margin: 5px 0; }
+        .overall-status { font-size: 18px; font-weight: bold; margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .browser-info { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Browser Compatibility Test</h1>
+    <div class="browser-info" id="browserInfo"></div>
+    <div class="overall-status" id="overallStatus"></div>
+    <div class="compatibility-grid" id="compatibilityGrid"></div>
+    
+    <!-- Include the main script for compatibility functions -->
+    <script src="script.js"></script>
+    
+    <script>
+        // Browser compatibility testing
+        function runBrowserCompatibilityTests() {
+            const features = {
+                promises: {
+                    name: 'Promises',
+                    test: () => typeof Promise !== 'undefined',
+                    critical: false
+                },
+                asyncAwait: {
+                    name: 'Async/Await',
+                    test: () => {
+                        try {
+                            return (function() {}).constructor('return (async function() {})();')().constructor === (async function() {}).constructor;
+                        } catch (e) {
+                            return false;
+                        }
+                    },
+                    critical: false
+                },
+                classList: {
+                    name: 'Element.classList',
+                    test: () => 'classList' in document.createElement('div'),
+                    critical: true
+                },
+                addEventListener: {
+                    name: 'addEventListener',
+                    test: () => 'addEventListener' in window,
+                    critical: true
+                },
+                querySelector: {
+                    name: 'querySelector',
+                    test: () => 'querySelector' in document,
+                    critical: true
+                },
+                cssTransitions: {
+                    name: 'CSS Transitions',
+                    test: () => {
+                        const el = document.createElement('div');
+                        return 'transition' in el.style || 'webkitTransition' in el.style || 'mozTransition' in el.style;
+                    },
+                    critical: false
+                },
+                cssTransforms: {
+                    name: 'CSS Transforms',
+                    test: () => {
+                        const el = document.createElement('div');
+                        return 'transform' in el.style || 'webkitTransform' in el.style || 'mozTransform' in el.style;
+                    },
+                    critical: false
+                },
+                localStorage: {
+                    name: 'localStorage',
+                    test: () => {
+                        try {
+                            return 'localStorage' in window && window.localStorage !== null;
+                        } catch (e) {
+                            return false;
+                        }
+                    },
+                    critical: false
+                },
+                console: {
+                    name: 'Console API',
+                    test: () => typeof console !== 'undefined' && typeof console.log === 'function',
+                    critical: false
+                },
+                fetch: {
+                    name: 'Fetch API',
+                    test: () => typeof fetch !== 'undefined',
+                    critical: false
+                },
+                imageConstructor: {
+                    name: 'Image Constructor',
+                    test: () => typeof Image !== 'undefined',
+                    critical: true
+                },
+                setTimeout: {
+                    name: 'setTimeout',
+                    test: () => typeof setTimeout !== 'undefined',
+                    critical: true
+                },
+                JSON: {
+                    name: 'JSON Support',
+                    test: () => typeof JSON !== 'undefined' && typeof JSON.parse === 'function',
+                    critical: true
+                }
+            };
+            
+            const grid = document.getElementById('compatibilityGrid');
+            const overallStatus = document.getElementById('overallStatus');
+            const browserInfo = document.getElementById('browserInfo');
+            
+            // Display browser information
+            browserInfo.innerHTML = `
+                <h3>Browser Information</h3>
+                <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
+                <p><strong>Platform:</strong> ${navigator.platform}</p>
+                <p><strong>Language:</strong> ${navigator.language}</p>
+                <p><strong>Online:</strong> ${navigator.onLine ? 'Yes' : 'No'}</p>
+                <p><strong>Cookies Enabled:</strong> ${navigator.cookieEnabled ? 'Yes' : 'No'}</p>
+            `;
+            
+            let supportedCount = 0;
+            let criticalMissing = [];
+            let totalFeatures = Object.keys(features).length;
+            
+            // Test each feature
+            for (const [key, feature] of Object.entries(features)) {
+                const isSupported = feature.test();
+                if (isSupported) {
+                    supportedCount++;
+                } else if (feature.critical) {
+                    criticalMissing.push(feature.name);
+                }
+                
+                const featureDiv = document.createElement('div');
+                featureDiv.className = `feature-test ${isSupported ? 'supported' : 'unsupported'}`;
+                featureDiv.innerHTML = `
+                    <div class="feature-name">${feature.name}</div>
+                    <div class="feature-status">
+                        Status: ${isSupported ? '✓ Supported' : '✗ Not Supported'}
+                        ${feature.critical ? ' (Critical)' : ' (Optional)'}
+                    </div>
+                `;
+                grid.appendChild(featureDiv);
+            }
+            
+            // Overall compatibility status
+            const compatibilityScore = Math.round((supportedCount / totalFeatures) * 100);
+            const isCompatible = criticalMissing.length === 0;
+            
+            overallStatus.className = `overall-status ${isCompatible ? 'supported' : 'unsupported'}`;
+            overallStatus.innerHTML = `
+                <div>Overall Compatibility: ${isCompatible ? '✓ Compatible' : '✗ Incompatible'}</div>
+                <div>Feature Support: ${supportedCount}/${totalFeatures} (${compatibilityScore}%)</div>
+                ${criticalMissing.length > 0 ? `<div>Missing Critical Features: ${criticalMissing.join(', ')}</div>` : ''}
+            `;
+            
+            // Test the actual compatibility function from script.js
+            const scriptCompatibilityResult = checkBrowserCompatibility();
+            console.log('Script compatibility check result:', scriptCompatibilityResult);
+            console.log('Manual compatibility check result:', isCompatible);
+            
+            // Add test results section
+            const testResults = document.createElement('div');
+            testResults.innerHTML = `
+                <h3>Compatibility Function Test</h3>
+                <p><strong>checkBrowserCompatibility() result:</strong> ${scriptCompatibilityResult}</p>
+                <p><strong>Manual test result:</strong> ${isCompatible}</p>
+                <p><strong>Results match:</strong> ${scriptCompatibilityResult === isCompatible ? '✓ Yes' : '✗ No'}</p>
+            `;
+            document.body.appendChild(testResults);
+            
+            return {
+                compatible: isCompatible,
+                score: compatibilityScore,
+                supported: supportedCount,
+                total: totalFeatures,
+                criticalMissing: criticalMissing
+            };
+        }
+        
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Running browser compatibility tests...');
+            const results = runBrowserCompatibilityTests();
+            console.log('Compatibility test results:', results);
+        });
+    </script>
+</body>
+</html>

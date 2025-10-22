@@ -1,0 +1,14 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#8d5524"/>
+  <circle cx="200" cy="150" r="95" fill="#a0522d"/>
+  <circle cx="180" cy="130" r="10" fill="#daa520"/>
+  <circle cx="220" cy="130" r="10" fill="#daa520"/>
+  <path d="M 140 80 L 165 60 L 185 85 Z" fill="#a0522d"/>
+  <path d="M 215 85 L 235 60 L 260 80 Z" fill="#a0522d"/>
+  <ellipse cx="200" cy="160" rx="20" ry="12" fill="#8b4513"/>
+  <path d="M 200 172 Q 180 190 170 185" stroke="#654321" stroke-width="3" fill="none"/>
+  <path d="M 200 172 Q 220 190 230 185" stroke="#654321" stroke-width="3" fill="none"/>
+  <rect x="150" y="120" width="100" height="8" fill="#daa520"/>
+  <rect x="160" y="140" width="80" height="6" fill="#daa520"/>
+  <text x="200" y="270" text-anchor="middle" font-family="Arial" font-size="16" fill="#f4e4bc">Majestic Maine Coon</text>
+</svg>

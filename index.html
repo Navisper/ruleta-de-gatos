@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive cat roulette wheel - spin to discover adorable cat images">
+    <meta name="keywords" content="cat, roulette, interactive, fun, cats, wheel">
+    <meta name="author" content="Cat Roulette">
+    <title>Cat Roulette - Spin the Wheel of Cats!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Cat Roulette</h1>
+        <p>Spin the wheel and discover your next favorite cat!</p>
+    </header>
+
+    <main>
+        <section class="roulette-container" aria-label="Cat roulette wheel">
+            <div class="roulette-wheel" id="rouletteWheel" role="img" aria-label="Roulette wheel with cat images">
+                <!-- Roulette wheel segments will be populated by JavaScript -->
+                <div class="wheel-center">
+                    <button id="spinButton" class="spin-button" aria-label="Spin the roulette wheel">
+                        SPIN
+                    </button>
+                </div>
+                <div class="wheel-pointer" aria-hidden="true"></div>
+            </div>
+        </section>
+
+        <section class="result-display" aria-label="Roulette result">
+            <div class="result-container" id="resultContainer">
+                <h2 id="resultTitle" class="result-title">Ready to spin?</h2>
+                <div class="result-image-container" id="resultImageContainer">
+                    <img id="resultImage" class="result-image" src="" alt="" style="display: none;">
+                </div>
+                <p id="resultMessage" class="result-message">Click the spin button to discover a cat!</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Cat Roulette. Made with ❤️ for cat lovers.</p>
+        <div class="deployment-status" id="deploymentStatus" style="display: none;">
+            <small>
+                <span id="deploymentVersion"></span> | 
+                <span id="deploymentHealth" class="health-indicator">●</span>
+                <button onclick="window.showDeploymentInfo && window.showDeploymentInfo()" style="background: none; border: none; color: inherit; text-decoration: underline; cursor: pointer; font-size: inherit;">Info</button>
+            </small>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="deployment-status.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#e6f3ff"/>
+  <circle cx="200" cy="150" r="85" fill="#f5deb3"/>
+  <circle cx="180" cy="125" r="12" fill="#4169e1"/>
+  <circle cx="220" cy="125" r="12" fill="#4169e1"/>
+  <path d="M 160 95 L 180 75 L 200 95 Z" fill="#8b4513"/>
+  <path d="M 200 95 L 220 75 L 240 95 Z" fill="#8b4513"/>
+  <ellipse cx="200" cy="155" rx="16" ry="9" fill="#d2691e"/>
+  <path d="M 200 164 Q 185 175 175 170" stroke="#654321" stroke-width="2" fill="none"/>
+  <path d="M 200 164 Q 215 175 225 170" stroke="#654321" stroke-width="2" fill="none"/>
+  <path d="M 150 110 L 200 120 L 250 110" stroke="#8b4513" stroke-width="3" fill="none"/>
+  <path d="M 160 140 L 200 145 L 240 140" stroke="#8b4513" stroke-width="2" fill="none"/>
+  <text x="200" y="260" text-anchor="middle" font-family="Arial" font-size="16" fill="#4169e1">Siamese Cat</text>
+</svg>

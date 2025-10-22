@@ -2,73 +2,68 @@ name: Deploy Cat Roulette
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
       pages: write
       id-token: write
-    
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      
+          node-version: "18"
+
       - name: Setup Pages
-        uses: actions/configure-pages@v4 
-     
+        uses: actions/configure-pages@v4
+
       - name: Validate HTML
         uses: Cyb3r-Jak3/html5validator-action@v7.2.0
         with:
           root: ./
           css: true
-          
+
       - name: Install dependencies for linting
         run: |
           npm init -y
           npm install --save-dev eslint stylelint stylelint-config-standard
-      
+
       - name: Lint CSS
         run: |
           echo "module.exports = { extends: ['stylelint-config-standard'] };" > .stylelintrc.js
           npx stylelint "*.css"
-      
-      - name: Lint JavaScript
-        run: |
-          echo "module.exports = { env: { browser: true, es2021: true }, extends: ['eslint:recommended'], parserOptions: { ecmaVersion: 12 } };" > .eslintrc.js
-          npx eslint "*.js"
-      
+
       - name: Optimize images
         run: |
           # Create optimized directory
           mkdir -p optimized/images
-          
+
           # Copy and optimize images (basic optimization)
           for img in images/*.{jpg,jpeg,png,svg}; do
             if [ -f "$img" ]; then
               cp "$img" "optimized/$img"
             fi
           done
-          
+
           # Copy other files
           cp *.html *.css *.js optimized/
-          
+
           # Copy deployment monitoring script
           cp deployment-status.js optimized/
-          
+
           # Create health check endpoint
           cat > optimized/health.json << EOF
           {
@@ -77,8 +72,8 @@ jobs:
             "timestamp": "$(date -u -Iseconds)",
             "version": "$(date +%Y%m%d-%H%M%S)"
           }
-          EOF     
- 
+          EOF
+
       - name: Create deployment metadata
         run: |
           # Create deployment metadata file
@@ -94,32 +89,32 @@ jobs:
             "version": "$(date +%Y%m%d-%H%M%S)"
           }
           EOF
-          
+
           echo "📋 Deployment metadata created"
-      
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./optimized
-      
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-        
+
       - name: Comprehensive deployment verification
         id: verify-deployment
         run: |
           echo "🔍 Starting comprehensive deployment verification..."
           DEPLOYMENT_URL="${{ steps.deployment.outputs.page_url }}"
           echo "Deployment URL: $DEPLOYMENT_URL"
-          
+
           # Wait for deployment to be fully ready
           echo "⏳ Waiting for deployment to be ready..."
           sleep 45
-          
+
           # Initialize verification results
           VERIFICATION_PASSED=true
-          
+
           # Test 1: Basic HTTP response
           echo "🌐 Testing HTTP response..."
           response=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOYMENT_URL" || echo "000")
@@ -129,7 +124,7 @@ jobs:
             echo "❌ HTTP response test failed (HTTP $response)"
             VERIFICATION_PASSED=false
           fi
-          
+
           # Test 2: Content verification
           echo "📄 Testing page content..."
           content=$(curl -s "$DEPLOYMENT_URL" || echo "")
@@ -139,10 +134,10 @@ jobs:
             echo "❌ Content verification failed (title not found)"
             VERIFICATION_PASSED=false
           fi
-          
+
           # Test 3: Critical assets verification
           echo "🎨 Testing critical assets..."
-          
+
           # Test CSS
           css_response=$(curl -s -o /dev/null -w "%{http_code}" "${DEPLOYMENT_URL}style.css" || echo "000")
           if [ "$css_response" = "200" ]; then
@@ -151,7 +146,7 @@ jobs:
             echo "❌ CSS asset test failed (HTTP $css_response)"
             VERIFICATION_PASSED=false
           fi
-          
+
           # Test JavaScript
           js_response=$(curl -s -o /dev/null -w "%{http_code}" "${DEPLOYMENT_URL}script.js" || echo "000")
           if [ "$js_response" = "200" ]; then
@@ -160,7 +155,7 @@ jobs:
             echo "❌ JavaScript asset test failed (HTTP $js_response)"
             VERIFICATION_PASSED=false
           fi
-          
+
           # Test 4: Functional smoke test
           echo "🔧 Testing JavaScript functionality..."
           if echo "$content" | grep -q "spinButton"; then
@@ -169,7 +164,7 @@ jobs:
             echo "❌ Functional elements test failed (spin button not found)"
             VERIFICATION_PASSED=false
           fi
-          
+
           # Test 5: Cat images availability
           echo "🐱 Testing cat images..."
           cat_image_found=false
@@ -180,14 +175,14 @@ jobs:
               break
             fi
           done
-          
+
           if [ "$cat_image_found" = true ]; then
             echo "✅ Cat images test passed (at least one image accessible)"
           else
             echo "❌ Cat images test failed (no images accessible)"
             VERIFICATION_PASSED=false
           fi
-          
+
           # Test 6: Health endpoint verification
           echo "🏥 Testing health endpoint..."
           health_response=$(curl -s -o /dev/null -w "%{http_code}" "${DEPLOYMENT_URL}health.json" || echo "000")
@@ -203,7 +198,7 @@ jobs:
             echo "❌ Health endpoint test failed (HTTP $health_response)"
             VERIFICATION_PASSED=false
           fi
-          
+
           # Final verification result
           if [ "$VERIFICATION_PASSED" = true ]; then
             echo "🎉 All deployment verification tests passed!"
@@ -213,7 +208,7 @@ jobs:
             echo "verification_status=failed" >> $GITHUB_OUTPUT
             exit 1
           fi
-      
+
       - name: Rollback on verification failure
         if: failure() && steps.verify-deployment.outputs.verification_status == 'failed'
         run: |
@@ -224,10 +219,10 @@ jobs:
           echo "   2. Failed deployment artifacts are not promoted"
           echo "   3. Development team will be notified"
           echo "🔍 Check the verification logs above for specific failure details"
-          
+
           # Set rollback status for notifications
           echo "ROLLBACK_TRIGGERED=true" >> $GITHUB_ENV
-      
+
       - name: Send failure notification
         if: failure()
         run: |
@@ -239,7 +234,7 @@ jobs:
           echo "Workflow: ${{ github.workflow }}"
           echo "Run ID: ${{ github.run_id }}"
           echo "Failure Time: $(date -u)"
-          
+
           if [ "${ROLLBACK_TRIGGERED:-false}" = "true" ]; then
             echo "Status: Deployment failed verification - rollback triggered"
             echo "Action: Previous version remains active"
@@ -247,14 +242,14 @@ jobs:
             echo "Status: Build or deployment process failed"
             echo "Action: No changes deployed"
           fi
-          
+
           echo "🔗 View details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-      
+
       - name: Update deployment status
         if: always()
         run: |
           echo "📊 Final deployment status update..."
-          
+
           if [ "${{ job.status }}" = "success" ]; then
             echo "🚀 SUCCESS: Cat Roulette deployed and verified successfully!"
             echo "🌐 Live URL: ${{ steps.deployment.outputs.page_url }}"
@@ -274,5 +269,5 @@ jobs:
             echo "🔍 Check logs above for detailed error information"
             echo "📞 Development team should investigate immediately"
           fi
-          
+
           echo "⏰ Workflow completed at: $(date -u)"

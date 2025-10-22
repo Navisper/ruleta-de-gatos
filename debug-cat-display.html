@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Cat Display - Diagnóstico Completo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status-ok { color: green; }
+        .status-error { color: red; }
+        .status-warning { color: orange; }
+        .image-test {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            width: 150px;
+        }
+        .image-test img {
+            max-width: 100px;
+            max-height: 100px;
+            display: block;
+            margin: 0 auto 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .log-area {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .result-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .result-image {
+            max-width: 300px;
+            max-height: 200px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 10px auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Cat Display - Diagnóstico Completo</h1>
+    
+    <div class="debug-section">
+        <h2>1. Verificación de Archivos SVG</h2>
+        <p>Comprobando si todos los archivos SVG existen y se pueden cargar:</p>
+        <div id="fileCheck">Verificando...</div>
+    </div>
+
+    <div class="debug-section">
+        <h2>2. Test de Carga de Imágenes</h2>
+        <div id="imageTests"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>3. Simulación del Roulette Display</h2>
+        <button onclick="simulateRouletteSelection()">Simular Selección de Roulette</button>
+        <button onclick="testAllCats()">Probar Todos los Gatos</button>
+        <button onclick="clearLog()">Limpiar Log</button>
+        
+        <div class="result-container">
+            <h3 id="simResultTitle">Esperando simulación...</h3>
+            <div id="simImageContainer" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                <img id="simResultImage" class="result-image" style="display: none;">
+                <p id="simMessage">Presiona un botón para probar</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-section">
+        <h2>4. Log de Debug</h2>
+        <div id="debugLog" class="log-area">Iniciando diagnóstico...\n</div>
+    </div>
+
+    <script>
+        // Datos de los gatos
+        const catImages = [
+            { id: 1, filename: "cat1.svg", alt: "Cute orange tabby cat sitting peacefully" },
+            { id: 2, filename: "cat2.svg", alt: "Playful black and white kitten" },
+            { id: 3, filename: "cat3.svg", alt: "Fluffy Persian cat with blue eyes" },
+            { id: 4, filename: "cat4.svg", alt: "Sleepy gray cat curled up" },
+            { id: 5, filename: "cat5.svg", alt: "Energetic calico cat playing" },
+            { id: 6, filename: "cat6.svg", alt: "Majestic Maine Coon cat" },
+            { id: 7, filename: "cat7.svg", alt: "Adorable Siamese cat with bright eyes" },
+            { id: 8, filename: "cat8.svg", alt: "Curious Bengal cat exploring" }
+        ];
+
+        let currentTestIndex = 0;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logArea = document.getElementById('debugLog');
+            const prefix = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+            logArea.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logArea.scrollTop = logArea.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('debugLog').textContent = 'Log limpiado...\n';
+        }
+
+        // Verificación inicial de archivos
+        function checkFiles() {
+            log('Iniciando verificación de archivos SVG...');
+            const fileCheckDiv = document.getElementById('fileCheck');
+            let html = '';
+            let loadedCount = 0;
+            let errorCount = 0;
+
+            catImages.forEach((cat, index) => {
+                const imagePath = `images/${cat.filename}`;
+                
+                // Test con Image()
+                const testImg = new Image();
+                testImg.onload = function() {
+                    loadedCount++;
+                    log(`✅ ${cat.filename} - Carga directa OK`, 'success');
+                    updateFileStatus(index, 'ok', 'Carga directa OK');
+                    checkComplete();
+                };
+                
+                testImg.onerror = function() {
+                    // Test con fetch
+                    fetch(imagePath)
+                        .then(response => {
+                            if (response.ok) {
+                                loadedCount++;
+                                log(`⚠️ ${cat.filename} - Solo via fetch`, 'warning');
+                                updateFileStatus(index, 'warning', 'Solo via fetch');
+                            } else {
+                                throw new Error(`HTTP ${response.status}`);
+                            }
+                        })
+                        .catch(error => {
+                            errorCount++;
+                            log(`❌ ${cat.filename} - Error: ${error.message}`, 'error');
+                            updateFileStatus(index, 'error', `Error: ${error.message}`);
+                        })
+                        .finally(checkComplete);
+                };
+                
+                testImg.src = imagePath;
+                
+                html += `<div class="image-test" id="fileStatus${index}">
+                    <div>Cat ${cat.id}</div>
+                    <div>${cat.filename}</div>
+                    <div id="status${index}">Verificando...</div>
+                </div>`;
+            });
+
+            fileCheckDiv.innerHTML = html;
+
+            function updateFileStatus(index, status, message) {
+                const statusEl = document.getElementById(`status${index}`);
+                const containerEl = document.getElementById(`fileStatus${index}`);
+                statusEl.textContent = message;
+                statusEl.className = `status-${status}`;
+                if (status === 'ok') containerEl.style.borderColor = 'green';
+                else if (status === 'warning') containerEl.style.borderColor = 'orange';
+                else if (status === 'error') containerEl.style.borderColor = 'red';
+            }
+
+            function checkComplete() {
+                if (loadedCount + errorCount === catImages.length) {
+                    log(`Verificación completa: ${loadedCount} OK, ${errorCount} errores`);
+                    createImageTests();
+                }
+            }
+        }
+
+        // Crear tests visuales de imágenes
+        function createImageTests() {
+            log('Creando tests visuales de imágenes...');
+            const testsDiv = document.getElementById('imageTests');
+            let html = '';
+
+            catImages.forEach((cat, index) => {
+                html += `
+                    <div class="image-test">
+                        <img src="images/${cat.filename}" alt="${cat.alt}" 
+                             onload="log('Imagen ${index + 1} cargada visualmente', 'success')"
+                             onerror="log('Error visual imagen ${index + 1}', 'error'); this.style.border='2px solid red';">
+                        <div>Cat ${cat.id}</div>
+                        <div style="font-size: 10px;">${cat.filename}</div>
+                    </div>
+                `;
+            });
+
+            testsDiv.innerHTML = html;
+        }
+
+        // Simular selección del roulette (copia del método real)
+        function simulateRouletteSelection() {
+            const randomCat = catImages[Math.floor(Math.random() * catImages.length)];
+            log(`Simulando selección: ${randomCat.filename}`);
+            loadCatImageSimulation(randomCat);
+        }
+
+        function testAllCats() {
+            log('Iniciando test de todos los gatos...');
+            currentTestIndex = 0;
+            testNextCat();
+        }
+
+        function testNextCat() {
+            if (currentTestIndex >= catImages.length) {
+                log('Test de todos los gatos completado', 'success');
+                return;
+            }
+
+            const cat = catImages[currentTestIndex];
+            log(`Testing cat ${currentTestIndex + 1}/${catImages.length}: ${cat.filename}`);
+            loadCatImageSimulation(cat);
+            
+            setTimeout(() => {
+                currentTestIndex++;
+                testNextCat();
+            }, 2000);
+        }
+
+        // Copia exacta del método loadCatImage del script principal
+        function loadCatImageSimulation(cat) {
+            const imagePath = `images/${cat.filename}`;
+            log(`Attempting to load cat image: ${imagePath}`);
+            
+            // Elementos del DOM
+            const titleEl = document.getElementById('simResultTitle');
+            const imageEl = document.getElementById('simResultImage');
+            const messageEl = document.getElementById('simMessage');
+            
+            // Actualizar UI
+            titleEl.textContent = 'Cargando...';
+            messageEl.textContent = 'Cargando imagen...';
+            imageEl.style.display = 'none';
+            
+            // Crear una nueva imagen para probar la carga
+            const testImage = new Image();
+            
+            testImage.onload = () => {
+                log(`Successfully loaded image: ${imagePath}`, 'success');
+                titleEl.textContent = '¡Éxito!';
+                messageEl.textContent = cat.alt;
+                imageEl.src = imagePath;
+                imageEl.alt = cat.alt;
+                imageEl.style.display = 'block';
+            };
+            
+            testImage.onerror = (error) => {
+                log(`Direct image load failed for: ${imagePath}, trying fetch...`, 'warning');
+                
+                fetch(imagePath)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        log(`Fetch successful for: ${imagePath}`, 'success');
+                        return response.text();
+                    })
+                    .then(svgText => {
+                        log(`SVG content loaded, creating blob URL...`);
+                        const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+                        const svgUrl = URL.createObjectURL(svgBlob);
+
+                        titleEl.textContent = '¡Éxito con Fetch!';
+                        messageEl.textContent = cat.alt;
+                        imageEl.src = svgUrl;
+                        imageEl.alt = cat.alt;
+                        imageEl.style.display = 'block';
+                        
+                        log(`SVG displayed successfully via blob URL`, 'success');
+                    })
+                    .catch(fetchError => {
+                        log(`Error loading SVG via fetch: ${fetchError.message}`, 'error');
+                        createFallbackImageSimulation(cat);
+                    });
+            };
+            
+            testImage.src = imagePath;
+        }
+
+        function createFallbackImageSimulation(cat) {
+            log(`Creating fallback image for: ${cat.alt}`, 'warning');
+            
+            const titleEl = document.getElementById('simResultTitle');
+            const imageEl = document.getElementById('simResultImage');
+            const messageEl = document.getElementById('simMessage');
+            
+            const svgContent = `
+                <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="100%" height="100%" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2" rx="8"/>
+                    <text x="50%" y="30%" text-anchor="middle" font-family="Arial" font-size="32" fill="#6c757d">🐱</text>
+                    <text x="50%" y="55%" text-anchor="middle" font-family="Arial" font-size="14" fill="#6c757d">${cat.alt}</text>
+                    <text x="50%" y="75%" text-anchor="middle" font-family="Arial" font-size="12" fill="#adb5bd">Image: ${cat.filename}</text>
+                    <text x="50%" y="90%" text-anchor="middle" font-family="Arial" font-size="10" fill="#adb5bd">File not found or failed to load</text>
+                </svg>
+            `;
+
+            try {
+                const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+                const svgUrl = URL.createObjectURL(svgBlob);
+
+                titleEl.textContent = 'Fallback Image';
+                messageEl.textContent = `${cat.alt} (usando fallback)`;
+                imageEl.src = svgUrl;
+                imageEl.alt = `Fallback for ${cat.alt}`;
+                imageEl.style.display = 'block';
+                
+                log('Fallback image created successfully', 'warning');
+            } catch (error) {
+                log(`Error creating fallback image: ${error.message}`, 'error');
+                titleEl.textContent = 'Error';
+                messageEl.textContent = `${cat.alt} (Image not available)`;
+                imageEl.style.display = 'none';
+            }
+        }
+
+        // Inicializar cuando se carga la página
+        window.addEventListener('load', function() {
+            log('Página de debug cargada, iniciando diagnóstico...');
+            checkFiles();
+        });
+    </script>
+</body>
+</html>

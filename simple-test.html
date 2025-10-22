@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Cat Display Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .result-image-container {
+            margin: 20px 0;
+            border-radius: 8px;
+            background: #f8f9fa;
+            min-height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            border: 2px dashed #dee2e6;
+        }
+        .result-image {
+            max-width: 100%;
+            max-height: 280px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            background: transparent;
+            display: block;
+        }
+        button {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #ff5252;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐱 Simple Cat Display Test</h1>
+        <p>Test básico para verificar la carga de imágenes SVG</p>
+        
+        <button onclick="testDirectLoad()">Test Carga Directa</button>
+        <button onclick="testFetchLoad()">Test Fetch + Blob</button>
+        <button onclick="testRandomCat()">Test Gato Aleatorio</button>
+        
+        <div id="status" class="status info">Listo para probar</div>
+        
+        <div class="result-image-container" id="imageContainer">
+            <img id="resultImage" class="result-image" style="display: none;">
+            <p id="placeholder">Selecciona un test para comenzar</p>
+        </div>
+        
+        <div id="info">
+            <p><strong>Archivo actual:</strong> <span id="currentFile">Ninguno</span></p>
+            <p><strong>Método:</strong> <span id="currentMethod">Ninguno</span></p>
+        </div>
+    </div>
+
+    <script>
+        const catImages = [
+            { id: 1, filename: "cat1.svg", alt: "Cute orange tabby cat sitting peacefully" },
+            { id: 2, filename: "cat2.svg", alt: "Playful black and white kitten" },
+            { id: 3, filename: "cat3.svg", alt: "Fluffy Persian cat with blue eyes" },
+            { id: 4, filename: "cat4.svg", alt: "Sleepy gray cat curled up" }
+        ];
+
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function updateInfo(filename, method) {
+            document.getElementById('currentFile').textContent = filename;
+            document.getElementById('currentMethod').textContent = method;
+        }
+
+        function hideImage() {
+            document.getElementById('resultImage').style.display = 'none';
+            document.getElementById('placeholder').style.display = 'block';
+        }
+
+        function showImage() {
+            document.getElementById('resultImage').style.display = 'block';
+            document.getElementById('placeholder').style.display = 'none';
+        }
+
+        function testDirectLoad() {
+            const cat = catImages[0]; // Usar cat1.svg
+            const imagePath = `images/${cat.filename}`;
+            
+            updateStatus('Probando carga directa...', 'info');
+            updateInfo(cat.filename, 'Carga directa (img.src)');
+            hideImage();
+            
+            const img = document.getElementById('resultImage');
+            
+            img.onload = function() {
+                updateStatus('✅ Carga directa exitosa!', 'success');
+                showImage();
+            };
+            
+            img.onerror = function() {
+                updateStatus('❌ Error en carga directa', 'error');
+            };
+            
+            img.src = imagePath;
+            img.alt = cat.alt;
+        }
+
+        function testFetchLoad() {
+            const cat = catImages[1]; // Usar cat2.svg
+            const imagePath = `images/${cat.filename}`;
+            
+            updateStatus('Probando fetch + blob...', 'info');
+            updateInfo(cat.filename, 'Fetch + Blob URL');
+            hideImage();
+            
+            fetch(imagePath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    updateStatus('Fetch exitoso, creando blob...', 'info');
+                    return response.text();
+                })
+                .then(svgText => {
+                    const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+                    const svgUrl = URL.createObjectURL(svgBlob);
+                    
+                    const img = document.getElementById('resultImage');
+                    img.onload = function() {
+                        updateStatus('✅ Fetch + Blob exitoso!', 'success');
+                        showImage();
+                    };
+                    
+                    img.onerror = function() {
+                        updateStatus('❌ Error mostrando blob', 'error');
+                    };
+                    
+                    img.src = svgUrl;
+                    img.alt = cat.alt;
+                })
+                .catch(error => {
+                    updateStatus(`❌ Error en fetch: ${error.message}`, 'error');
+                });
+        }
+
+        function testRandomCat() {
+            const cat = catImages[Math.floor(Math.random() * catImages.length)];
+            const imagePath = `images/${cat.filename}`;
+            
+            updateStatus('Probando gato aleatorio (método híbrido)...', 'info');
+            updateInfo(cat.filename, 'Híbrido (img.src → fetch)');
+            hideImage();
+            
+            // Método híbrido: intentar carga directa primero, luego fetch
+            const testImage = new Image();
+            
+            testImage.onload = function() {
+                updateStatus('✅ Carga directa exitosa!', 'success');
+                const img = document.getElementById('resultImage');
+                img.src = imagePath;
+                img.alt = cat.alt;
+                showImage();
+            };
+            
+            testImage.onerror = function() {
+                updateStatus('Carga directa falló, intentando fetch...', 'info');
+                
+                fetch(imagePath)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return response.text();
+                    })
+                    .then(svgText => {
+                        const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+                        const svgUrl = URL.createObjectURL(svgBlob);
+                        
+                        const img = document.getElementById('resultImage');
+                        img.onload = function() {
+                            updateStatus('✅ Fetch + Blob exitoso!', 'success');
+                            showImage();
+                        };
+                        img.src = svgUrl;
+                        img.alt = cat.alt;
+                    })
+                    .catch(error => {
+                        updateStatus(`❌ Ambos métodos fallaron: ${error.message}`, 'error');
+                    });
+            };
+            
+            testImage.src = imagePath;
+        }
+
+        // Test automático al cargar
+        window.addEventListener('load', function() {
+            updateStatus('Página cargada. Listo para probar.', 'info');
+            console.log('Simple test page loaded');
+        });
+    </script>
+</body>
+</html>

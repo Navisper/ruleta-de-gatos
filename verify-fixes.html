@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Global Function Fixes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Global Function Fixes Verification</h1>
+    <div id="status"></div>
+    
+    <!-- Include the main script -->
+    <script src="script.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusDiv = document.getElementById('status');
+            
+            // Wait for initialization to complete
+            setTimeout(() => {
+                statusDiv.innerHTML += '<div class="info">Testing global function accessibility...</div>';
+                
+                // Test 1: Check if classes are available
+                const classesAvailable = [
+                    { name: 'CatImageManager', available: typeof CatImageManager !== 'undefined' },
+                    { name: 'RouletteRandomizer', available: typeof RouletteRandomizer !== 'undefined' },
+                    { name: 'ImagePreloader', available: typeof ImagePreloader !== 'undefined' },
+                    { name: 'GlobalFunctionExposer', available: typeof GlobalFunctionExposer !== 'undefined' }
+                ];
+                
+                classesAvailable.forEach(cls => {
+                    if (cls.available) {
+                        statusDiv.innerHTML += `<div class="success">✓ ${cls.name} class is available</div>`;
+                    } else {
+                        statusDiv.innerHTML += `<div class="error">✗ ${cls.name} class is not available</div>`;
+                    }
+                });
+                
+                // Test 2: Check global functions
+                const globalFunctions = [
+                    { name: 'showUserFeedback', available: typeof window.showUserFeedback === 'function' },
+                    { name: 'showNetworkStatus', available: typeof window.showNetworkStatus === 'function' }
+                ];
+                
+                globalFunctions.forEach(fn => {
+                    if (fn.available) {
+                        statusDiv.innerHTML += `<div class="success">✓ ${fn.name} is globally accessible</div>`;
+                    } else {
+                        statusDiv.innerHTML += `<div class="error">✗ ${fn.name} is not globally accessible</div>`;
+                    }
+                });
+                
+                // Test 3: Test GlobalFunctionExposer validation
+                if (typeof GlobalFunctionExposer !== 'undefined') {
+                    try {
+                        const validationResult = GlobalFunctionExposer.validateGlobalAccess();
+                        if (validationResult) {
+                            statusDiv.innerHTML += '<div class="success">✓ GlobalFunctionExposer validation passed</div>';
+                        } else {
+                            statusDiv.innerHTML += '<div class="error">✗ GlobalFunctionExposer validation failed</div>';
+                        }
+                    } catch (error) {
+                        statusDiv.innerHTML += `<div class="error">✗ GlobalFunctionExposer validation error: ${error.message}</div>`;
+                    }
+                }
+                
+                // Test 4: Test CatImageManager with fresh data
+                try {
+                    const testCats = [
+                        { id: 1, filename: "test1.svg", alt: "Test cat 1", weight: 1 },
+                        { id: 2, filename: "test2.svg", alt: "Test cat 2", weight: 1 }
+                    ];
+                    const manager = new CatImageManager(testCats);
+                    
+                    // Test updateCatWeight with invalid weight
+                    const result = manager.updateCatWeight(1, 0);
+                    if (!result && manager.getCatById(1).weight === 1) {
+                        statusDiv.innerHTML += '<div class="success">✓ CatImageManager updateCatWeight correctly rejects invalid weight</div>';
+                    } else {
+                        statusDiv.innerHTML += '<div class="error">✗ CatImageManager updateCatWeight test failed</div>';
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML += `<div class="error">✗ CatImageManager test error: ${error.message}</div>`;
+                }
+                
+                statusDiv.innerHTML += '<div class="info">Verification complete!</div>';
+                
+            }, 1000); // Wait 1 second for full initialization
+        });
+    </script>
+</body>
+</html>
+</text>
+</invoke>

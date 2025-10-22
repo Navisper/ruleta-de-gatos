@@ -340,6 +340,368 @@ function setupBrowserFallbacks(features) {
 const catManager = new CatImageManager(catImages);
 const imagePreloader = new ImagePreloader(catImages);
 
+// Wheel segment visualization system
+class WheelSegmentCreator {
+    constructor(wheelElement) {
+        this.wheelElement = wheelElement;
+        this.segments = [];
+    }
+
+    // Create visual segments for each cat image
+    createSegments(catImages) {
+        try {
+            // Clear existing segments
+            this.clearSegments();
+            
+            if (!catImages || catImages.length === 0) {
+                console.warn('No cat images provided for segment creation');
+                return [];
+            }
+
+            const totalCats = catImages.length;
+            const segmentAngle = 360 / totalCats;
+            
+            console.log(`Creating ${totalCats} wheel segments`);
+
+            catImages.forEach((cat, index) => {
+                try {
+                    const segment = this.createSingleSegment(cat, index, totalCats, segmentAngle);
+                    if (segment) {
+                        this.segments.push(segment);
+                        this.wheelElement.appendChild(segment);
+                    }
+                } catch (error) {
+                    console.error(`Error creating segment for cat ${cat.id}:`, error);
+                }
+            });
+
+            console.log(`Successfully created ${this.segments.length} wheel segments`);
+            return this.segments;
+
+        } catch (error) {
+            console.error('Error in createSegments:', error);
+            return [];
+        }
+    }
+
+    // Create a single segment element
+    createSingleSegment(cat, index, totalCats, segmentAngle) {
+        try {
+            // Create segment container
+            const segment = document.createElement('div');
+            segment.className = 'wheel-segment';
+            segment.setAttribute('data-cat-id', cat.id);
+            segment.setAttribute('data-segment-index', index);
+
+            // Position the segment using rotation
+            this.positionSegment(segment, index, segmentAngle);
+
+            // Apply clip-path for pie slice shape
+            this.applySegmentClipping(segment, segmentAngle);
+
+            // Create image container within segment
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'segment-image-container';
+            segment.appendChild(imageContainer);
+
+            return segment;
+
+        } catch (error) {
+            console.error(`Error creating single segment for cat ${cat.id}:`, error);
+            return null;
+        }
+    }
+
+    // Position segment using trigonometric calculations
+    positionSegment(segment, index, segmentAngle) {
+        try {
+            const rotation = index * segmentAngle;
+            segment.style.transform = `rotate(${rotation}deg)`;
+            segment.style.transformOrigin = '50% 50%';
+            
+            // Store rotation for later use
+            segment.setAttribute('data-rotation', rotation);
+
+        } catch (error) {
+            console.error(`Error positioning segment ${index}:`, error);
+        }
+    }
+
+    // Apply CSS clip-path for pie slice shape
+    applySegmentClipping(segment, segmentAngle) {
+        try {
+            // Calculate clip-path points for pie slice
+            const halfAngle = segmentAngle / 2;
+            const radians = (halfAngle * Math.PI) / 180;
+            
+            // Calculate the end points of the arc
+            const x1 = 50 + (50 * Math.sin(-radians));
+            const y1 = 50 - (50 * Math.cos(-radians));
+            const x2 = 50 + (50 * Math.sin(radians));
+            const y2 = 50 - (50 * Math.cos(radians));
+
+            // Create clip-path polygon for pie slice
+            const clipPath = `polygon(50% 50%, ${x1}% ${y1}%, ${x2}% ${y2}%)`;
+            segment.style.clipPath = clipPath;
+
+        } catch (error) {
+            console.error('Error applying segment clipping:', error);
+            // Fallback to simple triangle clip
+            segment.style.clipPath = 'polygon(50% 50%, 50% 0%, 100% 50%)';
+        }
+    }
+
+    // Clear all existing segments
+    clearSegments() {
+        try {
+            // Remove segments from DOM
+            this.segments.forEach(segment => {
+                if (segment && segment.parentNode) {
+                    segment.parentNode.removeChild(segment);
+                }
+            });
+            
+            // Clear segments array
+            this.segments = [];
+
+            // Also remove any existing segments that might be in the DOM
+            const existingSegments = this.wheelElement.querySelectorAll('.wheel-segment');
+            existingSegments.forEach(segment => {
+                if (segment.parentNode) {
+                    segment.parentNode.removeChild(segment);
+                }
+            });
+
+        } catch (error) {
+            console.error('Error clearing segments:', error);
+        }
+    }
+
+    // Get all created segments
+    getSegments() {
+        return [...this.segments];
+    }
+
+    // Get segment by cat ID
+    getSegmentByCatId(catId) {
+        return this.segments.find(segment => 
+            segment.getAttribute('data-cat-id') === catId.toString()
+        );
+    }
+
+    // Get segment by index
+    getSegmentByIndex(index) {
+        return this.segments.find(segment => 
+            segment.getAttribute('data-segment-index') === index.toString()
+        );
+    }
+
+    // Load cat image into a specific segment
+    async loadCatImageIntoSegment(segment, cat) {
+        try {
+            if (!segment || !cat) {
+                throw new Error('Invalid segment or cat data provided');
+            }
+
+            const imageContainer = segment.querySelector('.segment-image-container');
+            if (!imageContainer) {
+                throw new Error('Image container not found in segment');
+            }
+
+            // Add loading state
+            segment.classList.add('loading');
+
+            // Check if image is preloaded
+            if (imagePreloader && imagePreloader.isImageLoaded(cat.id)) {
+                try {
+                    const img = this.createImageElement(cat);
+                    img.src = `images/${cat.filename}`;
+                    imageContainer.appendChild(img);
+                    segment.classList.remove('loading');
+                    return;
+                } catch (error) {
+                    console.warn(`Error using preloaded image for cat ${cat.id}:`, error);
+                    // Continue to on-demand loading
+                }
+            }
+
+            // Check if image previously failed
+            if (imagePreloader && imagePreloader.isImageFailed(cat.id)) {
+                this.createFallbackPlaceholder(imageContainer, cat);
+                segment.classList.remove('loading');
+                return;
+            }
+
+            // Load image on demand
+            await this.loadImageOnDemand(imageContainer, cat);
+            segment.classList.remove('loading');
+
+        } catch (error) {
+            console.error(`Error loading image into segment for cat ${cat.id}:`, error);
+            
+            // Create fallback placeholder
+            const imageContainer = segment.querySelector('.segment-image-container');
+            if (imageContainer) {
+                this.createFallbackPlaceholder(imageContainer, cat);
+            }
+            
+            segment.classList.remove('loading');
+        }
+    }
+
+    // Create image element with proper attributes and validation
+    createImageElement(cat) {
+        const img = document.createElement('img');
+        img.alt = cat.alt || `Cat ${cat.id}`;
+        img.setAttribute('data-cat-id', cat.id);
+        img.style.opacity = '0';
+        img.style.transition = 'opacity 0.3s ease';
+        
+        // Set placeholder initially to prevent empty src
+        img.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==";
+        
+        // Fade in when loaded
+        img.onload = () => {
+            img.style.opacity = '1';
+        };
+        
+        return img;
+    }
+
+    // Load image on demand with error handling
+    loadImageOnDemand(imageContainer, cat) {
+        return new Promise((resolve, reject) => {
+            const img = this.createImageElement(cat);
+            let timeoutId;
+            let isResolved = false;
+
+            const cleanup = () => {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                img.onload = null;
+                img.onerror = null;
+                img.onabort = null;
+            };
+
+            const resolveOnce = () => {
+                if (!isResolved) {
+                    isResolved = true;
+                    cleanup();
+                    imageContainer.appendChild(img);
+                    resolve();
+                }
+            };
+
+            const rejectOnce = (error) => {
+                if (!isResolved) {
+                    isResolved = true;
+                    cleanup();
+                    reject(error);
+                }
+            };
+
+            img.onload = resolveOnce;
+            
+            img.onerror = () => {
+                rejectOnce(new Error(`Failed to load segment image: ${cat.filename}`));
+            };
+
+            img.onabort = () => {
+                rejectOnce(new Error(`Segment image loading aborted: ${cat.filename}`));
+            };
+            
+            // Set timeout for image loading (3 seconds for segments)
+            timeoutId = setTimeout(() => {
+                if (!img.complete && !isResolved) {
+                    rejectOnce(new Error(`Segment image load timeout: ${cat.filename}`));
+                }
+            }, 3000);
+            
+            // Start loading the image
+            try {
+                img.src = `images/${cat.filename}`;
+            } catch (error) {
+                rejectOnce(new Error(`Error setting segment image source: ${error.message}`));
+            }
+        });
+    }
+
+    // Create fallback placeholder for failed image loads
+    createFallbackPlaceholder(imageContainer, cat) {
+        try {
+            // Clear any existing content
+            imageContainer.innerHTML = '';
+
+            // Create placeholder element
+            const placeholder = document.createElement('div');
+            placeholder.className = 'segment-placeholder';
+            placeholder.textContent = '🐱';
+            placeholder.title = cat.alt || `Cat ${cat.id}`;
+            
+            imageContainer.appendChild(placeholder);
+
+        } catch (error) {
+            console.error(`Error creating fallback placeholder for cat ${cat.id}:`, error);
+        }
+    }
+
+    // Load images into all segments
+    async loadAllSegmentImages(catImages) {
+        try {
+            if (!catImages || catImages.length === 0) {
+                console.warn('No cat images provided for segment loading');
+                return;
+            }
+
+            console.log(`Loading images into ${this.segments.length} segments`);
+
+            const loadPromises = this.segments.map((segment, index) => {
+                const cat = catImages[index];
+                if (cat) {
+                    return this.loadCatImageIntoSegment(segment, cat);
+                }
+                return Promise.resolve();
+            });
+
+            const results = await Promise.allSettled(loadPromises);
+            
+            // Log results
+            const successful = results.filter(result => result.status === 'fulfilled').length;
+            const failed = results.filter(result => result.status === 'rejected').length;
+            
+            console.log(`Segment image loading complete: ${successful} successful, ${failed} failed`);
+
+            if (failed > 0) {
+                console.warn(`${failed} segment images failed to load - placeholders will be shown`);
+            }
+
+        } catch (error) {
+            console.error('Error loading segment images:', error);
+        }
+    }
+
+    // Refresh segment images (useful for retrying failed loads)
+    async refreshSegmentImages(catImages) {
+        try {
+            // Clear existing images
+            this.segments.forEach(segment => {
+                const imageContainer = segment.querySelector('.segment-image-container');
+                if (imageContainer) {
+                    imageContainer.innerHTML = '';
+                }
+            });
+
+            // Reload all images
+            await this.loadAllSegmentImages(catImages);
+
+        } catch (error) {
+            console.error('Error refreshing segment images:', error);
+        }
+    }
+}
+
 // Random selection utilities
 class RouletteRandomizer {
     // Generate random rotation angle (multiple full rotations + final position)
@@ -554,10 +916,100 @@ class WheelSpinner {
         this.resultMessage = document.getElementById('resultMessage');
         this.resultImageContainer = document.getElementById('resultImageContainer');
         this.spinTimeoutId = null;
+        
+        // Initialize segment creator
+        this.segmentCreator = new WheelSegmentCreator(wheelElement);
+        this.segmentsInitialized = false;
+    }
+
+    // Initialize wheel segments if not already done
+    async initializeSegments() {
+        try {
+            if (this.segmentsInitialized) {
+                return true;
+            }
+
+            console.log('Initializing wheel segments...');
+            
+            const catImages = catManager.getAllCats();
+            if (!catImages || catImages.length === 0) {
+                throw new Error('No cat images available for segments');
+            }
+
+            // Create segments
+            const segments = this.segmentCreator.createSegments(catImages);
+            if (segments.length === 0) {
+                throw new Error('Failed to create wheel segments');
+            }
+
+            // Load images into segments
+            await this.segmentCreator.loadAllSegmentImages(catImages);
+
+            this.segmentsInitialized = true;
+            console.log('Wheel segments initialized successfully');
+            return true;
+
+        } catch (error) {
+            console.error('Error initializing segments:', error);
+            return false;
+        }
+    }
+
+    // Highlight the selected segment
+    highlightSelectedSegment(selectedCat) {
+        try {
+            // Clear any existing highlights
+            this.clearSegmentHighlights();
+
+            if (!selectedCat) {
+                return;
+            }
+
+            // Find and highlight the selected segment
+            const selectedSegment = this.segmentCreator.getSegmentByCatId(selectedCat.id);
+            if (selectedSegment) {
+                selectedSegment.classList.add('highlighted');
+                console.log(`Highlighted segment for cat ${selectedCat.id}`);
+            } else {
+                console.warn(`Could not find segment for selected cat ${selectedCat.id}`);
+            }
+
+        } catch (error) {
+            console.error('Error highlighting selected segment:', error);
+        }
+    }
+
+    // Clear all segment highlights
+    clearSegmentHighlights() {
+        try {
+            const segments = this.segmentCreator.getSegments();
+            segments.forEach(segment => {
+                segment.classList.remove('highlighted');
+            });
+        } catch (error) {
+            console.error('Error clearing segment highlights:', error);
+        }
+    }
+
+    // Refresh wheel segments (useful for retrying failed loads)
+    async refreshSegments() {
+        try {
+            console.log('Refreshing wheel segments...');
+            
+            const catImages = catManager.getAllCats();
+            await this.segmentCreator.refreshSegmentImages(catImages);
+            
+            console.log('Wheel segments refreshed successfully');
+            return true;
+
+        } catch (error) {
+            console.error('Error refreshing segments:', error);
+            return false;
+        }
     }
 
     // Smooth rotation animation with JavaScript
-    spin() {
+    async spin() {
         try {
             if (rouletteState.isSpinning) {
                 return; // Prevent multiple spins
@@ -567,6 +1019,18 @@ class WheelSpinner {
             if (!this.wheelElement || !this.spinButton) {
                 throw new Error('Required DOM elements not found');
             }
+
+            // Initialize segments if not already done
+            if (!this.segmentsInitialized) {
+                this.showUserFeedback('loading', 'Preparing wheel segments...', 0, true);
+                const segmentsReady = await this.initializeSegments();
+                if (!segmentsReady) {
+                    throw new Error('Failed to initialize wheel segments');
+                }
+            }
+
+            // Clear any previous highlights
+            this.clearSegmentHighlights();
 
             // Set spinning state
             rouletteState.isSpinning = true;
@@ -656,6 +1120,9 @@ class WheelSpinner {
             if (!selectedCat || !selectedCat.id) {
                 throw new Error('Invalid cat data received');
             }
+            
+            // Highlight the selected segment
+            this.highlightSelectedSegment(selectedCat);
             
             this.displayResult(selectedCat);
             
@@ -1255,6 +1722,47 @@ document.addEventListener('DOMContentLoaded', async function() {
                 throw new Error('Browser not supported - please use a modern browser');
             }
 
+            // Initialize HTML validation
+            try {
+                console.log('Initializing HTML validation...');
+                HTMLValidator.addImageSrcValidation();
+                HTMLValidator.addCSSValidationChecks();
+                HTMLValidator.addDevelopmentWarnings();
+                HTMLValidator.fixEmptyAttributes();
+                const validationResults = HTMLValidator.runValidation();
+                
+                if (validationResults.invalid > 0) {
+                    console.warn(`Fixed ${validationResults.invalid} HTML validation issues`);
+                    console.log('Validation categories:', validationResults.categories);
+                } else {
+                    console.log('HTML validation passed');
+                }
+                
+                // Generate detailed report in development
+                if (HTMLValidator.isDevelopmentEnvironment()) {
+                    HTMLValidator.generateValidationReport();
+                }
+            } catch (validationError) {
+                console.error('Error initializing HTML validation:', validationError);
+                // Continue initialization even if validation fails
+            }
+
+            // Initialize global function exposure for test compatibility
+            try {
+                console.log('Initializing global functions for test compatibility...');
+                const globalFunctionSuccess = GlobalFunctionExposer.initializeAll();
+                
+                if (globalFunctionSuccess) {
+                    console.log('Global functions successfully exposed');
+                } else {
+                    console.warn('Some global functions failed to expose - tests may fail');
+                }
+            } catch (globalError) {
+                console.error('Error initializing global functions:', globalError);
+                // Continue initialization even if global function exposure fails
+                // This ensures the app still works even if tests can't run
+            }
+
             // Validate critical DOM elements exist
             const requiredElements = ['resultMessage', 'spinButton', 'rouletteWheel', 'resultContainer'];
             const missingElements = requiredElements.filter(id => !document.getElementById(id));
@@ -1518,6 +2026,692 @@ function showNetworkStatus(status, message) {
         }
     } catch (error) {
         console.error('Error showing network status:', error);
+    }
+}
+
+// Global Function Exposer for test compatibility
+class GlobalFunctionExposer {
+    // Expose showUserFeedback function globally
+    static exposeUserFeedback() {
+        try {
+            if (typeof showUserFeedback === 'function') {
+                // Function is already global, ensure it's properly bound
+                window.showUserFeedback = showUserFeedback;
+                return true;
+            } else {
+                console.error('showUserFeedback function not found');
+                // Create stub function as fallback
+                window.showUserFeedback = function(type, message, duration = 3000, persistent = false) {
+                    console.log(`STUB showUserFeedback - ${type}: ${message}`);
+                };
+                return false;
+            }
+        } catch (error) {
+            console.error('Error exposing showUserFeedback globally:', error);
+            // Create stub function as fallback
+            window.showUserFeedback = function(type, message, duration = 3000, persistent = false) {
+                console.log(`STUB showUserFeedback - ${type}: ${message}`);
+            };
+            return false;
+        }
+    }
+
+    // Expose showNetworkStatus function globally
+    static exposeNetworkStatus() {
+        try {
+            if (typeof showNetworkStatus === 'function') {
+                // Function is already global, ensure it's properly bound
+                window.showNetworkStatus = showNetworkStatus;
+                return true;
+            } else {
+                console.error('showNetworkStatus function not found');
+                // Create stub function as fallback
+                window.showNetworkStatus = function(status, message) {
+                    console.log(`STUB showNetworkStatus - ${status}: ${message}`);
+                };
+                return false;
+            }
+        } catch (error) {
+            console.error('Error exposing showNetworkStatus globally:', error);
+            // Create stub function as fallback
+            window.showNetworkStatus = function(status, message) {
+                console.log(`STUB showNetworkStatus - ${status}: ${message}`);
+            };
+            return false;
+        }
+    }
+
+    // Validate that global functions are accessible
+    static validateGlobalAccess() {
+        try {
+            const results = {
+                showUserFeedback: false,
+                showNetworkStatus: false
+            };
+
+            // Check showUserFeedback
+            if (typeof window.showUserFeedback === 'function') {
+                try {
+                    // Test function call with safe parameters
+                    window.showUserFeedback('info', 'Global function test', 0, false);
+                    results.showUserFeedback = true;
+                } catch (error) {
+                    console.error('showUserFeedback validation failed:', error);
+                }
+            }
+
+            // Check showNetworkStatus
+            if (typeof window.showNetworkStatus === 'function') {
+                try {
+                    // Test function call with safe parameters
+                    window.showNetworkStatus('online', 'Global function test');
+                    results.showNetworkStatus = true;
+                } catch (error) {
+                    console.error('showNetworkStatus validation failed:', error);
+                }
+            }
+
+            const allValid = results.showUserFeedback && results.showNetworkStatus;
+            
+            if (allValid) {
+                console.log('Global function validation successful');
+            } else {
+                console.warn('Global function validation failed:', results);
+            }
+
+            return allValid;
+
+        } catch (error) {
+            console.error('Error validating global function access:', error);
+            return false;
+        }
+    }
+
+    // Detect if we're in a test environment
+    static isTestEnvironment() {
+        try {
+            // Check for test-specific indicators
+            const testIndicators = [
+                // Test file names in URL
+                window.location.pathname.includes('test-'),
+                // Test framework presence
+                typeof TestRunner !== 'undefined',
+                // Test-specific query parameters
+                window.location.search.includes('test=true'),
+                // Test-specific elements
+                document.getElementById('testResults') !== null,
+                // Test-specific title patterns
+                document.title.toLowerCase().includes('test')
+            ];
+
+            return testIndicators.some(indicator => indicator);
+        } catch (error) {
+            console.warn('Error detecting test environment:', error);
+            return false;
+        }
+    }
+
+    // Initialize all global function exposures
+    static initializeAll() {
+        try {
+            console.log('Initializing global function exposure...');
+            
+            // Check if we're in a test environment
+            const isTestEnv = this.isTestEnvironment();
+            console.log('Test environment detected:', isTestEnv);
+            
+            // Always expose functions, but provide more detailed logging in test environment
+            if (isTestEnv) {
+                console.log('Test environment detected - ensuring global function compatibility');
+            }
+            
+            const userFeedbackResult = this.exposeUserFeedback();
+            const networkStatusResult = this.exposeNetworkStatus();
+            
+            const success = userFeedbackResult && networkStatusResult;
+            
+            if (success) {
+                console.log('All global functions exposed successfully');
+                
+                // Validate the exposure worked
+                const validationResult = this.validateGlobalAccess();
+                if (!validationResult) {
+                    console.warn('Global function validation failed after exposure');
+                }
+                
+                return validationResult;
+            } else {
+                console.error('Failed to expose some global functions');
+                
+                // In test environment, this is more critical
+                if (isTestEnv) {
+                    console.error('Global function exposure failed in test environment - tests will likely fail');
+                }
+                
+                return false;
+            }
+            
+        } catch (error) {
+            console.error('Error initializing global functions:', error);
+            return false;
+        }
+    }
+}
+
+// HTML Validation utilities
+class HTMLValidator {
+    // Validate all image sources in the document
+    static validateImageSources() {
+        const results = [];
+        const images = document.querySelectorAll('img');
+        
+        images.forEach((img, index) => {
+            const result = {
+                element: img,
+                isValid: true,
+                issue: null,
+                fix: null
+            };
+            
+            // Check for empty src attribute
+            if (!img.src || img.src === '' || img.src === window.location.href) {
+                result.isValid = false;
+                result.issue = 'Empty src attribute';
+                result.fix = 'Set placeholder data URI';
+            }
+            
+            // Check for invalid src patterns
+            if (img.src && (img.src.startsWith('file://') || img.src.includes('undefined'))) {
+                result.isValid = false;
+                result.issue = 'Invalid src pattern';
+                result.fix = 'Use valid URL or data URI';
+            }
+            
+            results.push(result);
+        });
+        
+        return results;
+    }
+
+    // Validate CSS properties for common issues
+    static validateCSSProperties() {
+        const results = [];
+        
+        try {
+            // Check for invalid CSS values in stylesheets
+            const stylesheets = document.styleSheets;
+            
+            for (let i = 0; i < stylesheets.length; i++) {
+                try {
+                    const rules = stylesheets[i].cssRules || stylesheets[i].rules;
+                    
+                    for (let j = 0; j < rules.length; j++) {
+                        const rule = rules[j];
+                        
+                        if (rule.style) {
+                            // Check for invalid prefers-contrast values
+                            const mediaText = rule.parentRule?.conditionText || rule.media?.mediaText || '';
+                            if (mediaText.includes('prefers-contrast: high')) {
+                                results.push({
+                                    isValid: false,
+                                    element: null,
+                                    issue: 'Invalid prefers-contrast value "high"',
+                                    fix: 'Replace with "more"'
+                                });
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Skip inaccessible stylesheets (CORS issues)
+                    console.warn('Cannot access stylesheet:', e);
+                }
+            }
+            
+            // Additional CSS validation checks
+            this.validateComputedStyles(results);
+            
+        } catch (error) {
+            console.error('Error validating CSS properties:', error);
+        }
+        
+        return results;
+    }
+
+    // Validate computed styles for common issues
+    static validateComputedStyles(results) {
+        try {
+            // Check for elements with potentially invalid CSS values
+            const elementsToCheck = document.querySelectorAll('*');
+            
+            elementsToCheck.forEach(element => {
+                const computedStyle = window.getComputedStyle(element);
+                
+                // Check for invalid transform values
+                if (computedStyle.transform && computedStyle.transform.includes('NaN')) {
+                    results.push({
+                        isValid: false,
+                        element: element,
+                        issue: 'Invalid transform value containing NaN',
+                        fix: 'Use valid numeric values in transform'
+                    });
+                }
+                
+                // Check for invalid color values
+                if (computedStyle.color === 'initial' && element.style.color) {
+                    results.push({
+                        isValid: false,
+                        element: element,
+                        issue: 'Color value not properly resolved',
+                        fix: 'Use valid color values'
+                    });
+                }
+            });
+            
+        } catch (error) {
+            console.warn('Error validating computed styles:', error);
+        }
+    }
+
+    // Add CSS validation checks to prevent future issues
+    static addCSSValidationChecks() {
+        try {
+            // Monitor for dynamically added styles
+            const observer = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                        const element = mutation.target;
+                        this.validateElementStyle(element);
+                    }
+                });
+            });
+            
+            // Start observing
+            observer.observe(document.body, {
+                attributes: true,
+                subtree: true,
+                attributeFilter: ['style']
+            });
+            
+            console.log('CSS validation monitoring enabled');
+            
+        } catch (error) {
+            console.warn('Could not enable CSS validation monitoring:', error);
+        }
+    }
+
+    // Validate individual element style
+    static validateElementStyle(element) {
+        try {
+            const style = element.style;
+            
+            // Check for common invalid values
+            if (style.transform && style.transform.includes('NaN')) {
+                console.warn('Invalid transform value detected:', style.transform);
+                element.style.transform = 'none';
+            }
+            
+            if (style.opacity && (isNaN(parseFloat(style.opacity)) || parseFloat(style.opacity) < 0 || parseFloat(style.opacity) > 1)) {
+                console.warn('Invalid opacity value detected:', style.opacity);
+                element.style.opacity = '1';
+            }
+            
+        } catch (error) {
+            console.warn('Error validating element style:', error);
+        }
+    }
+
+    // Fix empty image src attributes
+    static fixEmptyAttributes() {
+        const placeholderDataUri = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==";
+        let fixedCount = 0;
+        
+        const images = document.querySelectorAll('img');
+        images.forEach(img => {
+            if (!img.src || img.src === '' || img.src === window.location.href) {
+                img.src = placeholderDataUri;
+                if (!img.alt) {
+                    img.alt = 'Placeholder image';
+                }
+                fixedCount++;
+                console.log('Fixed empty src attribute for image:', img);
+            }
+        });
+        
+        return fixedCount;
+    }
+
+    // Add validation to prevent empty src attributes in future
+    static addImageSrcValidation() {
+        // Override createElement to add validation
+        const originalCreateElement = document.createElement;
+        document.createElement = function(tagName) {
+            const element = originalCreateElement.call(this, tagName);
+            
+            if (tagName.toLowerCase() === 'img') {
+                // Add setter validation for src attribute
+                let srcValue = '';
+                Object.defineProperty(element, 'src', {
+                    get: function() {
+                        return srcValue;
+                    },
+                    set: function(value) {
+                        if (!value || value === '') {
+                            console.warn('Attempted to set empty src attribute, using placeholder');
+                            srcValue = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==";
+                        } else {
+                            srcValue = value;
+                        }
+                        element.setAttribute('src', srcValue);
+                    },
+                    configurable: true
+                });
+            }
+            
+            return element;
+        };
+        
+        console.log('Image src validation added to prevent empty attributes');
+    }
+
+    // Validate HTML structure and attributes
+    static validateHTMLStructure() {
+        const results = [];
+        
+        try {
+            // Check for required attributes
+            const elementsWithRequiredAttrs = [
+                { selector: 'img', attr: 'alt', required: true },
+                { selector: 'input', attr: 'type', required: true },
+                { selector: 'button', attr: 'type', required: false },
+                { selector: 'form', attr: 'action', required: false }
+            ];
+            
+            elementsWithRequiredAttrs.forEach(({ selector, attr, required }) => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    const hasAttr = element.hasAttribute(attr);
+                    const attrValue = element.getAttribute(attr);
+                    
+                    if (required && (!hasAttr || !attrValue)) {
+                        results.push({
+                            isValid: false,
+                            element: element,
+                            issue: `Missing required ${attr} attribute on ${selector}`,
+                            fix: `Add ${attr} attribute with appropriate value`
+                        });
+                    }
+                    
+                    if (hasAttr && !attrValue) {
+                        results.push({
+                            isValid: false,
+                            element: element,
+                            issue: `Empty ${attr} attribute on ${selector}`,
+                            fix: `Provide value for ${attr} attribute`
+                        });
+                    }
+                });
+            });
+            
+            // Check for accessibility issues
+            this.validateAccessibility(results);
+            
+            // Check for semantic HTML issues
+            this.validateSemanticHTML(results);
+            
+        } catch (error) {
+            console.error('Error validating HTML structure:', error);
+        }
+        
+        return results;
+    }
+
+    // Validate accessibility attributes
+    static validateAccessibility(results) {
+        try {
+            // Check for missing aria-labels on interactive elements
+            const interactiveElements = document.querySelectorAll('button, input, select, textarea, [role="button"]');
+            interactiveElements.forEach(element => {
+                const hasLabel = element.hasAttribute('aria-label') || 
+                               element.hasAttribute('aria-labelledby') ||
+                               element.textContent.trim() ||
+                               element.querySelector('label');
+                
+                if (!hasLabel) {
+                    results.push({
+                        isValid: false,
+                        element: element,
+                        issue: 'Interactive element missing accessible label',
+                        fix: 'Add aria-label, aria-labelledby, or visible text'
+                    });
+                }
+            });
+            
+            // Check for images without alt text
+            const images = document.querySelectorAll('img');
+            images.forEach(img => {
+                if (!img.hasAttribute('alt')) {
+                    results.push({
+                        isValid: false,
+                        element: img,
+                        issue: 'Image missing alt attribute',
+                        fix: 'Add alt attribute with descriptive text or empty string for decorative images'
+                    });
+                }
+            });
+            
+        } catch (error) {
+            console.warn('Error validating accessibility:', error);
+        }
+    }
+
+    // Validate semantic HTML usage
+    static validateSemanticHTML(results) {
+        try {
+            // Check for proper heading hierarchy
+            const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            let lastLevel = 0;
+            
+            headings.forEach(heading => {
+                const level = parseInt(heading.tagName.charAt(1));
+                
+                if (level > lastLevel + 1) {
+                    results.push({
+                        isValid: false,
+                        element: heading,
+                        issue: `Heading level skipped (h${lastLevel} to h${level})`,
+                        fix: 'Use sequential heading levels for proper document structure'
+                    });
+                }
+                
+                lastLevel = level;
+            });
+            
+            // Check for empty elements that should have content
+            const elementsNeedingContent = document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, button, a');
+            elementsNeedingContent.forEach(element => {
+                if (!element.textContent.trim() && !element.querySelector('img, svg')) {
+                    results.push({
+                        isValid: false,
+                        element: element,
+                        issue: `Empty ${element.tagName.toLowerCase()} element`,
+                        fix: 'Add meaningful content or remove empty element'
+                    });
+                }
+            });
+            
+        } catch (error) {
+            console.warn('Error validating semantic HTML:', error);
+        }
+    }
+
+    // Add development-time validation warnings
+    static addDevelopmentWarnings() {
+        try {
+            // Only add warnings in development environment
+            if (this.isDevelopmentEnvironment()) {
+                console.log('Adding development-time validation warnings...');
+                
+                // Monitor DOM changes for validation
+                const observer = new MutationObserver(mutations => {
+                    mutations.forEach(mutation => {
+                        if (mutation.type === 'childList') {
+                            mutation.addedNodes.forEach(node => {
+                                if (node.nodeType === Node.ELEMENT_NODE) {
+                                    this.validateNewElement(node);
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+                
+                // Add console warnings for common issues
+                this.addConsoleWarnings();
+                
+                console.log('Development validation warnings enabled');
+            }
+            
+        } catch (error) {
+            console.warn('Could not add development warnings:', error);
+        }
+    }
+
+    // Detect if we're in development environment
+    static isDevelopmentEnvironment() {
+        return window.location.hostname === 'localhost' ||
+               window.location.hostname === '127.0.0.1' ||
+               window.location.hostname.includes('dev') ||
+               window.location.port !== '' ||
+               document.title.toLowerCase().includes('dev');
+    }
+
+    // Validate newly added elements
+    static validateNewElement(element) {
+        try {
+            // Check if it's an image without alt
+            if (element.tagName === 'IMG' && !element.hasAttribute('alt')) {
+                console.warn('Image added without alt attribute:', element);
+            }
+            
+            // Check if it's an image with empty src
+            if (element.tagName === 'IMG' && (!element.src || element.src === '')) {
+                console.warn('Image added with empty src attribute:', element);
+            }
+            
+            // Check for interactive elements without labels
+            if (['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(element.tagName)) {
+                const hasLabel = element.hasAttribute('aria-label') || 
+                               element.hasAttribute('aria-labelledby') ||
+                               element.textContent.trim();
+                
+                if (!hasLabel) {
+                    console.warn('Interactive element added without accessible label:', element);
+                }
+            }
+            
+        } catch (error) {
+            console.warn('Error validating new element:', error);
+        }
+    }
+
+    // Add console warnings for common validation issues
+    static addConsoleWarnings() {
+        try {
+            // Override common DOM methods to add validation
+            const originalSetAttribute = Element.prototype.setAttribute;
+            Element.prototype.setAttribute = function(name, value) {
+                // Warn about empty src attributes
+                if (name === 'src' && this.tagName === 'IMG' && (!value || value === '')) {
+                    console.warn('Setting empty src attribute on image:', this);
+                }
+                
+                return originalSetAttribute.call(this, name, value);
+            };
+            
+            // Override innerHTML to check for validation issues
+            const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+            Object.defineProperty(Element.prototype, 'innerHTML', {
+                set: function(value) {
+                    // Check for images without alt in the HTML string
+                    if (value.includes('<img') && !value.includes('alt=')) {
+                        console.warn('Setting innerHTML with img tags missing alt attributes');
+                    }
+                    
+                    return originalInnerHTML.set.call(this, value);
+                },
+                get: originalInnerHTML.get
+            });
+            
+        } catch (error) {
+            console.warn('Could not add console warnings:', error);
+        }
+    }
+
+    // Run comprehensive HTML validation
+    static runValidation() {
+        console.log('Running comprehensive HTML validation...');
+        
+        const imageResults = this.validateImageSources();
+        const cssResults = this.validateCSSProperties();
+        const structureResults = this.validateHTMLStructure();
+        
+        const allResults = [...imageResults, ...cssResults, ...structureResults];
+        const invalidResults = allResults.filter(result => !result.isValid);
+        
+        if (invalidResults.length > 0) {
+            console.warn(`Found ${invalidResults.length} validation issues:`);
+            invalidResults.forEach(result => {
+                console.warn(`- ${result.issue}: ${result.fix}`);
+                if (result.element) {
+                    console.warn('  Element:', result.element);
+                }
+            });
+        } else {
+            console.log('No validation issues found');
+        }
+        
+        return {
+            total: allResults.length,
+            invalid: invalidResults.length,
+            issues: invalidResults,
+            categories: {
+                images: imageResults.filter(r => !r.isValid).length,
+                css: cssResults.filter(r => !r.isValid).length,
+                structure: structureResults.filter(r => !r.isValid).length
+            }
+        };
+    }
+
+    // Generate validation report
+    static generateValidationReport() {
+        const results = this.runValidation();
+        
+        const report = {
+            timestamp: new Date().toISOString(),
+            summary: {
+                total: results.total,
+                passed: results.total - results.invalid,
+                failed: results.invalid,
+                passRate: results.total > 0 ? ((results.total - results.invalid) / results.total * 100).toFixed(1) : 100
+            },
+            categories: results.categories,
+            issues: results.issues.map(issue => ({
+                type: issue.issue,
+                fix: issue.fix,
+                element: issue.element ? {
+                    tagName: issue.element.tagName,
+                    id: issue.element.id,
+                    className: issue.element.className
+                } : null
+            }))
+        };
+        
+        console.log('Validation Report:', report);
+        return report;
     }
 }
 

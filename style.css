@@ -345,22 +345,84 @@ footer {
   transform: scale(1.02);
 }
 
-/* Wheel segments for cat images (will be populated by JavaScript) */
+/* Wheel segments for cat images */
 .wheel-segment {
   position: absolute;
-  width: 50%;
-  height: 50%;
-  transform-origin: 100% 100%;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  transform-origin: 50% 50%;
   overflow: hidden;
-  clip-path: polygon(0 0, 100% 0, 0 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.wheel-segment .segment-image-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-90deg); /* Counter-rotate to keep images upright */
 }
 
 .wheel-segment img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: rotate(45deg) scale(1.4);
-  transform-origin: 0 100%;
+  max-width: 60%;
+  max-height: 60%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--border-radius-sm);
+  box-shadow: 0 2px 8px var(--shadow-light);
+  background: var(--white);
+  padding: 2px;
+}
+
+/* Segment highlighting for selected result */
+.wheel-segment.highlighted {
+  z-index: 2;
+}
+
+.wheel-segment.highlighted .segment-image-container {
+  animation: segmentHighlight 1s ease-in-out;
+}
+
+@keyframes segmentHighlight {
+  0%, 100% {
+    transform: rotate(-90deg) scale(1);
+  }
+  50% {
+    transform: rotate(-90deg) scale(1.1);
+  }
+}
+
+/* Loading state for segments */
+.wheel-segment.loading .segment-image-container::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--background-color);
+  border-top: 2px solid var(--primary-color);
+  border-radius: var(--border-radius-full);
+  animation: spin 1s linear infinite;
+  z-index: 10;
+}
+
+/* Fallback placeholder for failed images */
+.wheel-segment .segment-placeholder {
+  width: 40px;
+  height: 40px;
+  background: var(--background-color);
+  border: 2px solid var(--text-light);
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--text-light);
 }
 
 /* Wheel center with spin button */
@@ -536,7 +598,7 @@ footer {
 }
 
 /* High contrast mode support */
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .roulette-wheel {
     border: 3px solid;
   }

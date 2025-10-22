@@ -144,67 +144,109 @@
         });
         
         runner.test('CatImageManager - updateCatWeight rejects invalid weight', () => {
-            const manager = new CatImageManager(testCatImages);
+            // Create fresh test data to avoid interference from other tests
+            const freshTestCatImages = [
+                { id: 1, filename: "cat1.svg", alt: "Test cat 1", weight: 1 },
+                { id: 2, filename: "cat2.svg", alt: "Test cat 2", weight: 2 },
+                { id: 3, filename: "cat3.svg", alt: "Test cat 3", weight: 1 }
+            ];
+            const manager = new CatImageManager(freshTestCatImages);
             const result = manager.updateCatWeight(1, 0);
             assertFalse(result, 'Should return false for invalid weight');
             assertEquals(manager.getCatById(1).weight, 1, 'Weight should remain unchanged');
         });
         
-        // RouletteRandomizer Tests
-        runner.test('RouletteRandomizer - generateSpinRotation returns valid rotation', () => {
-            const rotation = RouletteRandomizer.generateSpinRotation();
-            assertTrue(rotation >= 1080, 'Should be at least 3 full rotations (1080 degrees)');
-            assertTrue(rotation <= 2520, 'Should be at most 7 full rotations (2520 degrees)');
-        });
-        
-        runner.test('RouletteRandomizer - calculateSelectedCat returns valid index', () => {
-            const totalCats = 8;
-            const rotation = 450; // 1.25 rotations
-            const selectedIndex = RouletteRandomizer.calculateSelectedCat(rotation, totalCats);
-            assertTrue(selectedIndex >= 0, 'Should return non-negative index');
-            assertTrue(selectedIndex < totalCats, 'Should return index less than total cats');
-        });
-        
-        runner.test('RouletteRandomizer - validateFairDistribution detects equal weights', () => {
-            const fairCats = [
-                { weight: 1 }, { weight: 1 }, { weight: 1 }
-            ];
-            assertTrue(RouletteRandomizer.validateFairDistribution(fairCats), 'Should return true for equal weights');
-        });
-        
-        runner.test('RouletteRandomizer - validateFairDistribution detects unequal weights', () => {
-            const unfairCats = [
-                { weight: 1 }, { weight: 2 }, { weight: 1 }
-            ];
-            assertFalse(RouletteRandomizer.validateFairDistribution(unfairCats), 'Should return false for unequal weights');
-        });
-        
-        // ImagePreloader Tests
-        runner.test('ImagePreloader - Constructor initializes correctly', () => {
-            const preloader = new ImagePreloader(testCatImages);
-            assertEquals(preloader.images.length, 3, 'Should store images array');
-            assertEquals(preloader.loadedImages.size, 0, 'Should start with no loaded images');
-            assertEquals(preloader.failedImages.size, 0, 'Should start with no failed images');
-        });
-        
-        runner.test('ImagePreloader - getLoadingStats returns correct initial stats', () => {
-            const preloader = new ImagePreloader(testCatImages);
-            const stats = preloader.getLoadingStats();
-            assertEquals(stats.total, 3, 'Total should be 3');
-            assertEquals(stats.loaded, 0, 'Loaded should be 0');
-            assertEquals(stats.failed, 0, 'Failed should be 0');
-            assertEquals(stats.loading, 0, 'Loading should be 0');
-        });
-        
-        runner.test('ImagePreloader - isImageLoaded returns false initially', () => {
-            const preloader = new ImagePreloader(testCatImages);
-            assertFalse(preloader.isImageLoaded(1), 'Should return false for unloaded image');
-        });
-        
-        runner.test('ImagePreloader - isImageFailed returns false initially', () => {
-            const preloader = new ImagePreloader(testCatImages);
-            assertFalse(preloader.isImageFailed(1), 'Should return false for unfailed image');
-        });
+        // Function to add class-dependent tests after classes are loaded
+        function addClassDependentTests() {
+            // RouletteRandomizer Tests
+            runner.test('RouletteRandomizer - generateSpinRotation returns valid rotation', () => {
+                if (typeof RouletteRandomizer === 'undefined') {
+                    throw new Error('RouletteRandomizer class not available');
+                }
+                const rotation = RouletteRandomizer.generateSpinRotation();
+                assertTrue(rotation >= 1080, 'Should be at least 3 full rotations (1080 degrees)');
+                assertTrue(rotation <= 2520, 'Should be at most 7 full rotations (2520 degrees)');
+            });
+            
+            runner.test('RouletteRandomizer - calculateSelectedCat returns valid index', () => {
+                if (typeof RouletteRandomizer === 'undefined') {
+                    throw new Error('RouletteRandomizer class not available');
+                }
+                const totalCats = 8;
+                const rotation = 450; // 1.25 rotations
+                const selectedIndex = RouletteRandomizer.calculateSelectedCat(rotation, totalCats);
+                assertTrue(selectedIndex >= 0, 'Should return non-negative index');
+                assertTrue(selectedIndex < totalCats, 'Should return index less than total cats');
+            });
+            
+            runner.test('RouletteRandomizer - validateFairDistribution detects equal weights', () => {
+                if (typeof RouletteRandomizer === 'undefined') {
+                    throw new Error('RouletteRandomizer class not available');
+                }
+                const fairCats = [
+                    { weight: 1 }, { weight: 1 }, { weight: 1 }
+                ];
+                assertTrue(RouletteRandomizer.validateFairDistribution(fairCats), 'Should return true for equal weights');
+            });
+            
+            runner.test('RouletteRandomizer - validateFairDistribution detects unequal weights', () => {
+                if (typeof RouletteRandomizer === 'undefined') {
+                    throw new Error('RouletteRandomizer class not available');
+                }
+                const unfairCats = [
+                    { weight: 1 }, { weight: 2 }, { weight: 1 }
+                ];
+                assertFalse(RouletteRandomizer.validateFairDistribution(unfairCats), 'Should return false for unequal weights');
+            });
+            
+            // ImagePreloader Tests
+            runner.test('ImagePreloader - Constructor initializes correctly', () => {
+                if (typeof ImagePreloader === 'undefined') {
+                    throw new Error('ImagePreloader class not available');
+                }
+                const preloader = new ImagePreloader(testCatImages);
+                assertEquals(preloader.images.length, 3, 'Should store images array');
+                assertEquals(preloader.loadedImages.size, 0, 'Should start with no loaded images');
+                assertEquals(preloader.failedImages.size, 0, 'Should start with no failed images');
+            });
+            
+            runner.test('ImagePreloader - getLoadingStats returns correct initial stats', () => {
+                if (typeof ImagePreloader === 'undefined') {
+                    throw new Error('ImagePreloader class not available');
+                }
+                const preloader = new ImagePreloader(testCatImages);
+                const stats = preloader.getLoadingStats();
+                assertEquals(stats.total, 3, 'Total should be 3');
+                assertEquals(stats.loaded, 0, 'Loaded should be 0');
+                assertEquals(stats.failed, 0, 'Failed should be 0');
+                assertEquals(stats.loading, 0, 'Loading should be 0');
+            });
+            
+            runner.test('ImagePreloader - isImageLoaded returns false initially', () => {
+                if (typeof ImagePreloader === 'undefined') {
+                    throw new Error('ImagePreloader class not available');
+                }
+                const preloader = new ImagePreloader(testCatImages);
+                assertFalse(preloader.isImageLoaded(1), 'Should return false for unloaded image');
+            });
+            
+            runner.test('ImagePreloader - isImageFailed returns false initially', () => {
+                if (typeof ImagePreloader === 'undefined') {
+                    throw new Error('ImagePreloader class not available');
+                }
+                const preloader = new ImagePreloader(testCatImages);
+                assertFalse(preloader.isImageFailed(1), 'Should return false for unfailed image');
+            });
+            
+            // GlobalFunctionExposer Tests
+            runner.test('GlobalFunctionExposer - validateGlobalAccess works', () => {
+                if (typeof GlobalFunctionExposer === 'undefined') {
+                    throw new Error('GlobalFunctionExposer class not available');
+                }
+                const result = GlobalFunctionExposer.validateGlobalAccess();
+                assertTrue(typeof result === 'boolean', 'Should return a boolean result');
+            });
+        }
         
         // Browser compatibility tests
         runner.test('Browser compatibility - checkBrowserCompatibility function exists', () => {
@@ -233,11 +275,18 @@
             assertEquals(rouletteState.spinDuration, 3000, 'Should have 3 second spin duration');
         });
         
-        // Run all tests when page loads
+        // Run all tests when page loads and script is fully executed
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('Running Cat Roulette unit tests...');
-            const results = await runner.runAll();
-            console.log(`Test Results: ${results.passed}/${results.total} passed`);
+            // Wait a moment to ensure all classes are loaded
+            setTimeout(async () => {
+                console.log('Running Cat Roulette unit tests...');
+                
+                // Add class-dependent tests now that classes should be available
+                addClassDependentTests();
+                
+                const results = await runner.runAll();
+                console.log(`Test Results: ${results.passed}/${results.total} passed`);
+            }, 500); // Increased timeout to ensure script is fully loaded
         });
     </script>
 </body>

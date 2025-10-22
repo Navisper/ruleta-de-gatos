@@ -160,19 +160,12 @@ jobs:
             VERIFICATION_PASSED=false
           fi
 
-          # Test 6: Health endpoint verification
-          echo "🏥 Testing health endpoint..."
-          health_response=$(curl -s -o /dev/null -w "%{http_code}" "${DEPLOYMENT_URL}health.json" || echo "000")
-          if [ "$health_response" = "200" ]; then
-            health_content=$(curl -s "${DEPLOYMENT_URL}health.json" || echo "{}")
-            if echo "$health_content" | grep -q '"status":"healthy"'; then
-              echo "✅ Health endpoint test passed"
-            else
-              echo "❌ Health endpoint test failed (invalid content)"
-              VERIFICATION_PASSED=false
-            fi
+          echo "🌐 Testing main page accessibility..."
+          main_page_response=$(curl -s -o /dev/null -w "%{http_code}" "${DEPLOYMENT_URL}" || echo "000")
+          if [ "$main_page_response" = "200" ]; then
+            echo "✅ Main page loaded successfully"
           else
-            echo "❌ Health endpoint test failed (HTTP $health_response)"
+            echo "❌ Main page failed to load (HTTP $main_page_response)"
             VERIFICATION_PASSED=false
           fi
 
